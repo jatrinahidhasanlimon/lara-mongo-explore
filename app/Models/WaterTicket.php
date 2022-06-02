@@ -7,5 +7,5 @@ class WaterTicket extends Model
 {
     protected $connection = 'mongodb_water';
     protected $collection = 'tickets';
-    // protected $dates = ['ticketDateTime'];
+    protected $dates = ['createdAt'];
 }
