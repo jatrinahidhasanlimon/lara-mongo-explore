@@ -102,6 +102,11 @@ return [
             'driver' => 'mongodb',
             'dsn' => env('DB_URI', 'mongodb+srv://username:password@<atlas-cluster-uri>/myappdb?retryWrites=true&w=majority'),
             'database' => 'waterTransport',
+        ], 
+        'mongodb_laravel_sample_database' => [
+            'driver' => 'mongodb',
+            'dsn' => env('DB_URI', 'mongodb+srv://nhlimon2:nhlimon1234@<atlas-cluster-uri>/myappdb?retryWrites=true&w=majority'),
+            'database' => 'laravel_sample_database',
         ]
 
     ],

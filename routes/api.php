@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\IntercityReportController;
 use App\Http\Controllers\WaterTrasportReportController;
+use App\Http\Controllers\BookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,4 +36,12 @@ Route::get('/water/companies',[WaterTrasportReportController::class,'companies']
 
 Route::prefix('water')->group(function () {
     Route::get('/companies', [WaterTrasportReportController::class,'companies'] );
+});
+
+
+
+Route::prefix('books')->group(function () {
+    Route::get('/', [BookController::class,'index'] );
+    Route::post('/store', [BookController::class,'store'] );
+    Route::get('/searchbydate', [BookController::class,'searchByDate'] );
 });
