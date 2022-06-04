@@ -23,7 +23,15 @@ class WaterTrasportReportController extends Controller
     }
     public function companies(Request $request)
     {
-        $all_companies = WaterCompany::select('id','name','digitalTicketingCommissionBase')->get();
+        $from_date =  Carbon::parse('2021-04-06')->startOfDay();
+        $to_date =  Carbon::parse('2022-06-07')->endOfDay();
+        // return $from_date;
+        // select('id','name','digitalTicketingCommissionBase','createdAt')->
+        $all_companies = WaterCompany::select('id','name','digitalTicketingCommissionBase','createdAt')->whereBetween( 'createdAt', array(
+                $from_date,
+                $to_date
+            ) )->with('tickets')->get();
+        // return $all_companies;
         $all_companies_to_array = $all_companies->toArray();
         // $searchedValue = '6242ac3aca6de73359946921';
 
@@ -42,7 +50,7 @@ class WaterTrasportReportController extends Controller
                 $from_date  =  date_format(date_create_from_format('d/m/Y', $date_ranges[0]), 'Y-m-d');
                 $from_date =  Carbon::parse($from_date)->startOfDay();
                 $to_date    =  date_format(date_create_from_format('d/m/Y', $date_ranges[1]), 'Y-m-d');
-                $to_date =  Carbon::parse($to_date)->startOfDay();
+                $to_date =  Carbon::parse($to_date)->endOfDay();
                 if((int) round((strtotime($to_date) - strtotime($from_date)) / (60 * 60 * 24)) > 600){
                     return redirect()->back()->with('error', 'Wrong Booking Date! Maximum 7 days.');
                 }
@@ -53,12 +61,10 @@ class WaterTrasportReportController extends Controller
                 $from_date,
                 $to_date
             )
-        )->take(500)->get()->groupBy('companyId');
-        // return $tickets;
+        )->with('company')->take(500)->get()->groupBy('companyId');
         $tickets_report_groupings = $tickets->mapWithKeys(function ($group, $key) use ($all_companies_to_array){
-            
         return [
-                $key => [
+                $key.'-'.array_column($all_companies_to_array, 'name', '_id')[$key] => [
                     'company' => $key, // $key is what we grouped by
                     'SEAT' =>  $group->where('ticketType', 'SEAT')->count(),
                     'DECK' =>  $group->where('ticketType', 'DECK')->count(),
@@ -69,7 +75,6 @@ class WaterTrasportReportController extends Controller
                     'DECK_GMV' => $group->where('ticketType', 'DECK')->sum('totalAmount'),  //totalAmount
                     'STAFF_GMV' => $group->where('ticketType', 'STAFF')->sum('totalAmount'),  //totalAmount
                     'GOODS_GMV' => $group->where('ticketType', 'GOODS')->sum('totalAmount'),  //totalAmount
-
                     'deckCommissionBase' => array_column($all_companies_to_array, 'name', '_id')[$key] //totalAmount
                 ]
             ];
