@@ -23,23 +23,20 @@ class WaterTrasportReportController extends Controller
     }
     public function companies(Request $request)
     {
-        $from_date =  Carbon::parse('2021-04-06')->startOfDay();
+        $from_date =  Carbon::parse('2022-05-06')->startOfDay();
         $to_date =  Carbon::parse('2022-06-07')->endOfDay();
         // return $from_date;
-        // select('id','name','digitalTicketingCommissionBase','createdAt')->
-        $all_companies = WaterCompany::select('id','name','digitalTicketingCommissionBase','createdAt')->whereBetween( 'createdAt', array(
-                $from_date,
-                $to_date
-            ) )->with('tickets')->get();
+        // select('id','name','seatCommissionBase','createdAt')->
+        $all_companies = WaterCompany::select('id','name','seatCommissionBase','deckCommissionBase','goodsCommissionBase','seatCommissionRate','deckCommissionRate','goodsCommissionRate','createdAt')->get();
         // return $all_companies;
         $all_companies_to_array = $all_companies->toArray();
         // $searchedValue = '6242ac3aca6de73359946921';
 
         // $all_companies_columns =  array_column($all_companies_to_array, 'name', '_id')['6242ac3aca6de73359946921'];
-        // $all_companies_columns =  array_column($all_companies_to_array, 'digitalTicketingCommissionBase', '_id')['6242ac3aca6de73359946921'];
+        // $all_companies_columns =  array_column($all_companies_to_array, 'seatCommissionBase', '_id')['6242ac3aca6de73359946921'];
         // return $all_companies_columns;
         // return $all_companies_columns['6242ac3aca6de73359946921'];
-        $custom_range = "01/02/2022 - 01/06/2022";
+        $custom_range = "01/05/2022 - 01/06/2022";
         $date_range = $from_date = $to_date = '';
         request()->merge([ 'date_range' => $custom_range ]);
         /*** Create Date ***/
@@ -61,21 +58,75 @@ class WaterTrasportReportController extends Controller
                 $from_date,
                 $to_date
             )
-        )->with('company')->take(500)->get()->groupBy('companyId');
+        )->get()->groupBy('companyId');
         $tickets_report_groupings = $tickets->mapWithKeys(function ($group, $key) use ($all_companies_to_array){
+            $seat_total_ticket = $group->where('ticketType', 'SEAT')->sum('totalSeat');
+            $deck_total_ticket = $group->where('ticketType', 'DECK')->sum('totalSeat');
+            $goods_total_ticket = $group->where('ticketType', 'DECK')->sum('totalSeat');
+           
+            $seat_amount = $group->where('ticketType', 'SEAT')->sum('totalAmount');  //totalAmount
+            $deck_amount = $group->where('ticketType', 'DECK')->sum('totalAmount');  //totalAmount
+            $goods_amount = $group->where('ticketType', 'GOODS')->sum('totalAmount');  //totalAmount
+
+            $found_company_key = array_search($key, array_column($all_companies_to_array, '_id')); 
+            $company_details = $all_companies_to_array[$found_company_key];
+            // dd ( $company_details['seatCommissionBase'] );
+
+            $seat_commision_base = $company_details['seatCommissionBase'];
+            $deck_commision_base = $company_details['deckCommissionBase'];
+            $goods_commision_base = $company_details['goodsCommissionBase'];   
+            $seat_commision_rate = $company_details['seatCommissionRate'];
+
+
+            $deck_commision_rate = $company_details['deckCommissionRate'];
+            $goods_commision_rate = $company_details['goodsCommissionRate'];
+            
+            $seat_toal_commission = $deck_toal_commission = $goods_toal_commission = 0;
+            
+            if($seat_commision_base == 'NO_OF_TICKETS_PERCENTAGE' ){
+                $seat_toal_commission = ($seat_total_ticket * $seat_commision_rate) / 100;
+            } else if($seat_commision_base == 'NO_OF_TICKETS_AMOUNT' ){
+                $seat_toal_commission = $seat_total_ticket * $seat_commision_rate;
+            } else if($seat_commision_base == 'GMV_PERCENTAGE' ){
+                $seat_toal_commission = $seat_amount * $seat_commision_rate / 100;
+            }
+
+            if($deck_commision_base == 'NO_OF_TICKETS_PERCENTAGE' ){
+                $deck_toal_commission = ($deck_total_ticket * $deck_commision_rate) / 100;
+            } else if($deck_commision_base == 'NO_OF_TICKETS_AMOUNT' ){
+                $deck_toal_commission = $deck_total_ticket * $deck_commision_rate;
+            } else if($deck_commision_base == 'GMV_PERCENTAGE' ){
+                $deck_toal_commission = $deck_amount * $deck_commision_rate / 100;
+            }
+            
+            if($goods_commision_base == 'NO_OF_TICKETS_PERCENTAGE' ){
+                $goods_toal_commission = ($goods_total_ticket * $goods_commision_rate) / 100;
+            } else if($goods_commision_base == 'NO_OF_TICKETS_AMOUNT' ){
+                $goods_toal_commission = $goods_total_ticket * $goods_commision_rate;
+            } else if($goods_commision_base == 'GMV_PERCENTAGE' ){
+                $goods_toal_commission = $goods_amount * $goods_commision_rate / 100;
+            }
+
+
         return [
                 $key.'-'.array_column($all_companies_to_array, 'name', '_id')[$key] => [
                     'company' => $key, // $key is what we grouped by
-                    'SEAT' =>  $group->where('ticketType', 'SEAT')->count(),
-                    'DECK' =>  $group->where('ticketType', 'DECK')->count(),
-                    'STAFF' => $group->where('ticketType', 'STAFF')->count(),
-                    'GOODS' => $group->where('ticketType', 'GOODS')->count(),
+                    
+                    'seat_total_ticket' => $seat_total_ticket,
+                    'deck_total_ticket' => $deck_total_ticket,
+                    'goods_total_ticket' => $goods_total_ticket,
 
-                    'SEAT_GMV' => $group->where('ticketType', 'SEAT')->sum('totalAmount'),  //totalAmount
-                    'DECK_GMV' => $group->where('ticketType', 'DECK')->sum('totalAmount'),  //totalAmount
-                    'STAFF_GMV' => $group->where('ticketType', 'STAFF')->sum('totalAmount'),  //totalAmount
-                    'GOODS_GMV' => $group->where('ticketType', 'GOODS')->sum('totalAmount'),  //totalAmount
-                    'deckCommissionBase' => array_column($all_companies_to_array, 'name', '_id')[$key] //totalAmount
+                    'seat_amount' => $seat_amount,
+                    'deck_amount' => $deck_amount,
+                    'goods_amount' => $goods_amount,
+
+                    'seat_commision_base' => $seat_commision_base,
+                    'deck_commision_base' => $deck_commision_base,
+                    'goods_commision_base' => $goods_commision_base,
+
+                    'seat_toal_commission' => $seat_toal_commission,
+                    'deck_toal_commission' => $deck_toal_commission,
+                    'goods_toal_commission' => $goods_toal_commission,
                 ]
             ];
         });
